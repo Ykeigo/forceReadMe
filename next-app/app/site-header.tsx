@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthControls } from "./auth-controls";
 
 export function SiteHeader() {
   return (
@@ -10,12 +11,15 @@ export function SiteHeader() {
         >
           今週の技術記事
         </Link>
-        <Link
-          href="/memos"
-          className="text-sm text-zinc-600 underline-offset-4 hover:underline dark:text-zinc-400"
-        >
-          今までに作成したメモ
-        </Link>
+        <nav className="flex items-center gap-4">
+          <Link
+            href="/memos"
+            className="text-sm text-zinc-600 underline-offset-4 hover:underline dark:text-zinc-400"
+          >
+            今までに作成したメモ
+          </Link>
+          <AuthControls />
+        </nav>
       </div>
     </header>
   );
