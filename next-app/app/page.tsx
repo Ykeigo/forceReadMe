@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { getRandomRecentArticles } from "@/lib/articles";
+import { buildNewMemoPath } from "@/lib/memos";
 
 export const dynamic = "force-dynamic";
 
@@ -33,32 +35,42 @@ export default async function Home() {
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {articles.map((article) => (
               <li key={article.id} className="py-5 first:pt-0 last:pb-0">
-                <div className="mb-1.5 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  <span
-                    className={
-                      article.source === "Zenn"
-                        ? "font-medium text-sky-600 dark:text-sky-400"
-                        : "font-medium text-green-700 dark:text-green-400"
-                    }
+                <div className="flex items-start gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span
+                        className={
+                          article.source === "Zenn"
+                            ? "font-medium text-sky-600 dark:text-sky-400"
+                            : "font-medium text-green-700 dark:text-green-400"
+                        }
+                      >
+                        {article.source}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <time dateTime={article.publishedAt}>
+                        {formatDate(article.publishedAt)}
+                      </time>
+                    </div>
+                    <a
+                      href={article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lg font-medium leading-snug text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
+                    >
+                      {article.title}
+                    </a>
+                    <p className="mt-1 break-all text-sm text-zinc-500 dark:text-zinc-400">
+                      {article.url}
+                    </p>
+                  </div>
+                  <Link
+                    href={buildNewMemoPath(article.title, article.url)}
+                    className="shrink-0 rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
                   >
-                    {article.source}
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <time dateTime={article.publishedAt}>
-                    {formatDate(article.publishedAt)}
-                  </time>
+                    メモ作成
+                  </Link>
                 </div>
-                <a
-                  href={article.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lg font-medium leading-snug text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
-                >
-                  {article.title}
-                </a>
-                <p className="mt-1 break-all text-sm text-zinc-500 dark:text-zinc-400">
-                  {article.url}
-                </p>
               </li>
             ))}
           </ul>
