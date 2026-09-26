@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 export type Article = {
   id: string;
   title: string;
@@ -8,6 +10,9 @@ export type Article = {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const ARTICLE_COUNT = 5;
+/** 記事プールの再取得間隔（秒）。外部 API 待ちを避けるためキャッシュする */
+const POOL_REVALIDATE_SECONDS = 60 * 60;
+const ZENN_MAX_PAGES = 5;
 
 function weekAgoIsoDate(): string {
   const d = new Date(Date.now() - WEEK_MS);
@@ -40,18 +45,27 @@ type ZennResponse = {
   next_page: number | null;
 };
 
+async function fetchZennPage(page: number): Promise<ZennResponse | null> {
+  const res = await fetch(
+    `https://zenn.dev/api/articles?order=latest&page=${page}`,
+    { next: { revalidate: POOL_REVALIDATE_SECONDS } },
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as ZennResponse;
+}
+
 async function fetchZenn(): Promise<Article[]> {
   const since = Date.now() - WEEK_MS;
   const results: Article[] = [];
 
-  for (let page = 1; page <= 5; page++) {
-    const res = await fetch(
-      `https://zenn.dev/api/articles?order=latest&page=${page}`,
-      { next: { revalidate: 0 } },
-    );
-    if (!res.ok) break;
+  // 直近1週間分を集めるため複数ページを並列取得する
+  const pages = await Promise.all(
+    Array.from({ length: ZENN_MAX_PAGES }, (_, i) => fetchZennPage(i + 1)),
+  );
 
-    const data = (await res.json()) as ZennResponse;
+  for (const data of pages) {
+    if (!data) break;
+
     for (const a of data.articles ?? []) {
       const published = new Date(a.published_at).getTime();
       if (!Number.isFinite(published) || published < since) {
@@ -90,7 +104,7 @@ async function fetchQiita(): Promise<Article[]> {
           ? { Authorization: `Bearer ${process.env.QIITA_ACCESS_TOKEN}` }
           : {}),
       },
-      next: { revalidate: 0 },
+      next: { revalidate: POOL_REVALIDATE_SECONDS },
     },
   );
   if (!res.ok) return [];
@@ -107,10 +121,7 @@ async function fetchQiita(): Promise<Article[]> {
     }));
 }
 
-/** 直近1週間の Zenn / Qiita 記事からランダムに最大5件返す */
-export async function getRandomRecentArticles(
-  count = ARTICLE_COUNT,
-): Promise<Article[]> {
+async function loadRecentArticlesPool(): Promise<Article[]> {
   const settled = await Promise.allSettled([fetchZenn(), fetchQiita()]);
   const pool: Article[] = [];
 
@@ -120,5 +131,19 @@ export async function getRandomRecentArticles(
     }
   }
 
+  return pool;
+}
+
+const getCachedRecentArticlesPool = unstable_cache(
+  loadRecentArticlesPool,
+  ["recent-articles-pool"],
+  { revalidate: POOL_REVALIDATE_SECONDS },
+);
+
+/** 直近1週間の Zenn / Qiita 記事からランダムに最大5件返す */
+export async function getRandomRecentArticles(
+  count = ARTICLE_COUNT,
+): Promise<Article[]> {
+  const pool = await getCachedRecentArticlesPool();
   return shuffle(pool).slice(0, count);
 }
