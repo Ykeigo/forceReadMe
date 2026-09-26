@@ -1,5 +1,6 @@
 export type Memo = {
   id: string;
+  userId: string;
   title: string;
   url: string;
   body: string;
@@ -7,7 +8,11 @@ export type Memo = {
   updatedAt: string;
 };
 
-export const MEMO_STORAGE_KEY = "force-readme-memos";
+export type CreateMemoInput = {
+  title: string;
+  url: string;
+  body: string;
+};
 
 export function createMemoId(): string {
   return `memo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -18,18 +23,22 @@ export function buildNewMemoPath(title: string, url: string): string {
   return `/memos/new?${params.toString()}`;
 }
 
-export function loadMemos(): Memo[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(MEMO_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Memo[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveMemos(memos: Memo[]) {
-  localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(memos));
+export function toMemoDto(row: {
+  id: string;
+  userId: string;
+  title: string;
+  url: string;
+  body: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): Memo {
+  return {
+    id: row.id,
+    userId: row.userId,
+    title: row.title,
+    url: row.url,
+    body: row.body,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }

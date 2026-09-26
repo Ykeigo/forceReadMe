@@ -1,24 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  MEMO_STORAGE_KEY,
   buildNewMemoPath,
   createMemoId,
-  loadMemos,
-  saveMemos,
-  type Memo,
+  toMemoDto,
 } from "./memos";
-
-function sampleMemo(overrides: Partial<Memo> = {}): Memo {
-  return {
-    id: "memo-1",
-    title: "サンプル",
-    url: "https://example.com/a",
-    body: "## 要点",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("createMemoId", () => {
   it("memo- で始まる ID を返す", () => {
@@ -48,35 +33,28 @@ describe("buildNewMemoPath", () => {
   });
 });
 
-describe("loadMemos / saveMemos", () => {
-  afterEach(() => {
-    localStorage.clear();
-    vi.unstubAllGlobals();
-  });
-
-  it("未保存なら空配列を返す", () => {
-    expect(loadMemos()).toEqual([]);
-  });
-
-  it("保存したメモを読み戻せる", () => {
-    const memos = [sampleMemo()];
-    saveMemos(memos);
-    expect(loadMemos()).toEqual(memos);
-    expect(localStorage.getItem(MEMO_STORAGE_KEY)).toBe(JSON.stringify(memos));
-  });
-
-  it("壊れた JSON なら空配列を返す", () => {
-    localStorage.setItem(MEMO_STORAGE_KEY, "{not-json");
-    expect(loadMemos()).toEqual([]);
-  });
-
-  it("配列以外の JSON なら空配列を返す", () => {
-    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify({ id: "x" }));
-    expect(loadMemos()).toEqual([]);
-  });
-
-  it("window が無い環境では空配列を返す", () => {
-    vi.stubGlobal("window", undefined);
-    expect(loadMemos()).toEqual([]);
+describe("toMemoDto", () => {
+  it("Date を ISO 文字列に変換する", () => {
+    const createdAt = new Date("2026-01-02T03:04:05.000Z");
+    const updatedAt = new Date("2026-01-03T03:04:05.000Z");
+    expect(
+      toMemoDto({
+        id: "memo-1",
+        userId: "user-1",
+        title: "タイトル",
+        url: "https://example.com",
+        body: "本文",
+        createdAt,
+        updatedAt,
+      }),
+    ).toEqual({
+      id: "memo-1",
+      userId: "user-1",
+      title: "タイトル",
+      url: "https://example.com",
+      body: "本文",
+      createdAt: "2026-01-02T03:04:05.000Z",
+      updatedAt: "2026-01-03T03:04:05.000Z",
+    });
   });
 });

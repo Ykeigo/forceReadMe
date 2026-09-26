@@ -1,26 +1,23 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
-import { MEMO_STORAGE_KEY, type Memo } from "@/lib/memos";
+import { describe, expect, it } from "vitest";
+import type { Memo } from "@/lib/memos";
 import { MemoList } from "./memo-list";
 
 describe("MemoList", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it("0件なら空状態メッセージを表示する", async () => {
-    render(<MemoList />);
+  it("0件なら空状態メッセージを表示する", () => {
+    render(<MemoList memos={[]} />);
     expect(
-      await screen.findByText(
+      screen.getByText(
         "まだメモはありません。記事一覧からメモを作成してください。",
       ),
     ).toBeInTheDocument();
   });
 
-  it("本文ありのメモは Markdown を、空本文はプレースホルダを表示する", async () => {
+  it("本文ありのメモは Markdown を、空本文はプレースホルダを表示する", () => {
     const memos: Memo[] = [
       {
         id: "memo-1",
+        userId: "user-1",
         title: "本文あり",
         url: "https://example.com/1",
         body: "## 見出し",
@@ -29,6 +26,7 @@ describe("MemoList", () => {
       },
       {
         id: "memo-2",
+        userId: "user-1",
         title: "本文なし",
         url: "https://example.com/2",
         body: "   ",
@@ -36,11 +34,10 @@ describe("MemoList", () => {
         updatedAt: "2026-01-01T12:00:00.000Z",
       },
     ];
-    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(memos));
 
-    render(<MemoList />);
+    render(<MemoList memos={memos} />);
 
-    expect(await screen.findByText("本文あり")).toBeInTheDocument();
+    expect(screen.getByText("本文あり")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 2, name: "見出し" }),
     ).toBeInTheDocument();

@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import {
-  createMemoId,
-  loadMemos,
-  saveMemos,
-  type Memo,
-} from "@/lib/memos";
+import { createMemoAction } from "@/app/actions/memos";
 
 type Props = {
   initialTitle: string;
@@ -23,7 +18,7 @@ export function MemoForm({ initialTitle, initialUrl }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -33,20 +28,25 @@ export function MemoForm({ initialTitle, initialUrl }: Props) {
     }
 
     setSaving(true);
-    const now = new Date().toISOString();
-    const memo: Memo = {
-      id: createMemoId(),
-      title: title.trim(),
-      url: url.trim(),
-      body,
-      createdAt: now,
-      updatedAt: now,
-    };
-
     try {
-      const memos = loadMemos();
-      memos.unshift(memo);
-      saveMemos(memos);
+      const result = await createMemoAction({
+        title,
+        url,
+        body,
+      });
+
+      if (!result.ok) {
+        if (result.error === "UNAUTHENTICATED") {
+          setError("ログインが必要です。");
+        } else if (result.error === "INVALID_ARTICLE") {
+          setError("記事情報が不正です。一覧から再度開き直してください。");
+        } else {
+          setError("保存に失敗しました。");
+        }
+        setSaving(false);
+        return;
+      }
+
       router.push("/memos");
       router.refresh();
     } catch {

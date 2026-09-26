@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { MemoForm } from "./memo-form";
 
 type SearchParams = Promise<{
@@ -16,6 +18,20 @@ export default async function NewMemoPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    const params = await searchParams;
+    const title = first(params.title);
+    const url = first(params.url);
+    const returnTo = new URLSearchParams();
+    if (title) returnTo.set("title", title);
+    if (url) returnTo.set("url", url);
+    const path = returnTo.size
+      ? `/memos/new?${returnTo.toString()}`
+      : "/memos/new";
+    redirect(`/login?callbackUrl=${encodeURIComponent(path)}`);
+  }
+
   const params = await searchParams;
   const title = first(params.title);
   const url = first(params.url);
@@ -34,7 +50,7 @@ export default async function NewMemoPage({
             読書メモを作成
           </h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            記事の情報を確認し、Markdown でメモを書いてください。
+            記事の情報を確認し、Markdown でメモを書いてください。アカウントにオンライン保存されます。
           </p>
         </div>
 

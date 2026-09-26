@@ -1,8 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { MarkdownBody } from "@/components/markdown-body";
-import { loadMemos, type Memo } from "@/lib/memos";
+import type { Memo } from "@/lib/memos";
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -14,19 +11,11 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-export function MemoList() {
-  const [memos, setMemos] = useState<Memo[] | null>(null);
+type Props = {
+  memos: Memo[];
+};
 
-  useEffect(() => {
-    setMemos(loadMemos());
-  }, []);
-
-  if (memos === null) {
-    return (
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中…</p>
-    );
-  }
-
+export function MemoList({ memos }: Props) {
   if (memos.length === 0) {
     return (
       <p className="text-zinc-600 dark:text-zinc-400">

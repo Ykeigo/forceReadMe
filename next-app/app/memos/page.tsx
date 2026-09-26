@@ -1,6 +1,16 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { listMemosForUser } from "@/lib/memo-store";
 import { MemoList } from "./memo-list";
 
-export default function MemosPage() {
+export default async function MemosPage() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login?callbackUrl=/memos");
+  }
+
+  const memos = await listMemosForUser(session.user.id);
+
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
@@ -9,11 +19,11 @@ export default function MemosPage() {
             今までに作成したメモ
           </h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            このブラウザに保存された読書メモ一覧です。
+            アカウントに保存された読書メモ一覧です。
           </p>
         </header>
 
-        <MemoList />
+        <MemoList memos={memos} />
       </main>
     </div>
   );

@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MEMO_STORAGE_KEY, type Memo } from "@/lib/memos";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoForm } from "./memo-form";
 
 const push = vi.fn();
 const refresh = vi.fn();
+const createMemoActionMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
@@ -26,15 +26,15 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/app/actions/memos", () => ({
+  createMemoAction: (...args: unknown[]) => createMemoActionMock(...args),
+}));
+
 describe("MemoForm", () => {
   beforeEach(() => {
-    localStorage.clear();
     push.mockReset();
     refresh.mockReset();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    createMemoActionMock.mockReset();
   });
 
   it("title / url が空ならエラーを出して保存しない", async () => {
@@ -46,21 +46,24 @@ describe("MemoForm", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "記事情報が不正です。一覧から再度開き直してください。",
     );
-    expect(localStorage.getItem(MEMO_STORAGE_KEY)).toBeNull();
+    expect(createMemoActionMock).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("正常送信でメモを先頭追加して /memos へ遷移する", async () => {
+  it("正常送信で server action を呼び /memos へ遷移する", async () => {
     const user = userEvent.setup();
-    const existing: Memo = {
-      id: "memo-old",
-      title: "既存",
-      url: "https://example.com/old",
-      body: "old",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify([existing]));
+    createMemoActionMock.mockResolvedValue({
+      ok: true,
+      memo: {
+        id: "memo-1",
+        userId: "user-1",
+        title: "新しい記事",
+        url: "https://example.com/new",
+        body: "## 要点",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
 
     render(
       <MemoForm
@@ -72,25 +75,20 @@ describe("MemoForm", () => {
     await user.type(screen.getByLabelText("メモ（Markdown）"), "## 要点");
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
-    const saved = JSON.parse(
-      localStorage.getItem(MEMO_STORAGE_KEY) ?? "[]",
-    ) as Memo[];
-    expect(saved).toHaveLength(2);
-    expect(saved[0]).toMatchObject({
-      title: "新しい記事",
-      url: "https://example.com/new",
+    expect(createMemoActionMock).toHaveBeenCalledWith({
+      title: " 新しい記事 ",
+      url: " https://example.com/new ",
       body: "## 要点",
     });
-    expect(saved[0].id).toMatch(/^memo-/);
-    expect(saved[1].id).toBe("memo-old");
     expect(push).toHaveBeenCalledWith("/memos");
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("localStorage 書き込み失敗時にエラーを出す", async () => {
+  it("保存失敗時にエラーを出す", async () => {
     const user = userEvent.setup();
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("quota");
+    createMemoActionMock.mockResolvedValue({
+      ok: false,
+      error: "SAVE_FAILED",
     });
 
     render(
